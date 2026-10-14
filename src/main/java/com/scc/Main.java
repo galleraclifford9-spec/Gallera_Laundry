@@ -3,6 +3,8 @@ package com.scc;
 import com.scc.dao.UserDao;
 import com.scc.model.User;
 import com.scc.ui.AdminMenu;
+import com.scc.ui.CustomerMenu;
+import com.scc.ui.StaffMenu;
 
 
 import java.util.Scanner;
@@ -72,6 +74,8 @@ public class Main {
             System.out.println("\n -> Welcome "+user.full_name()+ " | ROLE: "+user.role()+"");
             switch (user.role()){
                 case "ADMIN" -> new AdminMenu(userDao, sc).display(user);
+                case "STAFF" -> new StaffMenu(userDao, sc).display(user);
+                case "CUSTOMER" -> new CustomerMenu(userDao, sc).display(user);
             }
         }
     }

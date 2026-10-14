@@ -18,7 +18,6 @@ public class AdminMenu {
     public void display(User admin){
         while (true) {
             System.out.println("\n==========================================");
-            System.out.println("          LAUNDRY SERVICE SYSTEM");
             System.out.println("          ADMINISTRATOR MENU");
             System.out.println("==========================================");
             System.out.println("Logged in as: " + admin.full_name() + " (Administrator)\n");
