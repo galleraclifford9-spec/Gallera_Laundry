@@ -87,7 +87,12 @@ public class UserDao {
                         System.out.println("-> Account is pending, Waiting for Approval");
                         return null;
                     }
+                    if (!"APPROVED".equalsIgnoreCase(status)) {
+                        System.out.println("-> Account is " + status + ". Contact an administrator.");
+                        return null;
+                    }
                     return mapUser(rs);
+
                 } else {
                     System.out.println(" -> Invalid username or password");
                 }
@@ -161,4 +166,36 @@ public class UserDao {
             return false;
         }
     }
+
+    private boolean updateColumn(String column,int userId, String value){
+        String sql = "UPDATE users SET "+ column + " = ? WHERE user_id = ?";
+
+        try(Connection conn = DatabaseConnection.getconnection();
+            PreparedStatement pstmt = conn.prepareStatement(sql)){
+
+            pstmt.setString(1, value.toUpperCase());
+            pstmt.setInt(2, userId);
+
+            int updatedRow = pstmt.executeUpdate();
+            if(updatedRow > 0){
+                System.out.println("\n -> User Id: " + userId + " updated successfully!");
+                return true;
+            }else {
+                System.out.println(" ->User ID not found.");
+            }
+            return false;
+        }catch (SQLException e){
+            System.err.println("Error updating user:"+e.getMessage());
+        }
+        return false;
+    }
+
+    public boolean updateStatus(int userId, String status){
+        return updateColumn("status", userId, status);
+    }
+
+    public boolean updateRole(int userId, String role){
+        return updateColumn("role", userId, role);
+    }
+
 }
