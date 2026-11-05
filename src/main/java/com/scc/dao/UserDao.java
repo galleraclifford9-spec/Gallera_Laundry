@@ -8,14 +8,14 @@ import java.util.List;
 
 public class UserDao {
 
-    public UserDao() {
+    private final ActivityLogDao logDao = new ActivityLogDao();
 
+    public UserDao() {
         try (Connection conn = DatabaseConnection.getconnection()) {
             defaultAdminGenerator(conn);
         } catch (SQLException e) {
             System.err.println("Error seeding default admin: " + e.getMessage());
         }
-
     }
 
     public void defaultAdminGenerator(Connection conn) {
@@ -33,11 +33,9 @@ public class UserDao {
         } catch (SQLException e) {
             System.err.println("Error seeding default admin: " + e.getMessage());
         }
-
     }
 
     public boolean registerUser(String full_name, String username, String password, String role) {
-
         String sql = "INSERT INTO users (full_name, username, password, role ,status) VALUES(?,?,?,?, 'PENDING')";
 
         try (Connection conn = DatabaseConnection.getconnection();
@@ -95,12 +93,31 @@ public class UserDao {
 
                 } else {
                     System.out.println(" -> Invalid username or password");
+                    logFailedLogin(username);
                 }
             }
         } catch (SQLException e) {
             System.err.println("Error during login " + e.getMessage());
         }
         return null;
+    }
+
+    // Logs a failed attempt only if the username exists (FK needs a valid user_id)
+    private void logFailedLogin(String username) {
+        String sql = "SELECT user_id, role FROM users WHERE username = ?";
+        try (Connection conn = DatabaseConnection.getconnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, username);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    int id = rs.getInt("user_id");
+                    logDao.log(id, "LOGIN_FAILED",
+                            "Failed login attempt for " + username + " (ID: " + id + ", Role: " + rs.getString("role") + ")");
+                }
+            }
+        } catch (SQLException e) {
+            System.err.println("Error logging failed login: " + e.getMessage());
+        }
     }
 
     private User mapUser(ResultSet rs) throws SQLException {
@@ -113,6 +130,20 @@ public class UserDao {
                 rs.getString("status"),
                 rs.getString("date_created")
         );
+    }
+
+    public User getUserById(int userId) {
+        String sql = "SELECT user_id, full_name, username, password, role, status, date_created FROM users WHERE user_id = ?";
+        try (Connection conn = DatabaseConnection.getconnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setInt(1, userId);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) return mapUser(rs);
+            }
+        } catch (SQLException e) {
+            System.err.println("Error fetching user: " + e.getMessage());
+        }
+        return null;
     }
 
     public List<User> getAllUsers() {
@@ -153,49 +184,115 @@ public class UserDao {
         return users;
     }
 
-    public boolean approveUser(int userId) {
+    // ACCOUNT MANAGEMENT (logged)
+    public boolean approveUser(int adminId, int userId) {
         String sql = "UPDATE users SET status = 'APPROVED' WHERE user_id = ? AND status = 'PENDING'";
 
         try (Connection conn = DatabaseConnection.getconnection();
              PreparedStatement pstmt = conn.prepareStatement(sql)) {
 
             pstmt.setInt(1, userId);
-            return pstmt.executeUpdate() > 0;
+            boolean ok = pstmt.executeUpdate() > 0;
+            if (ok) {
+                logDao.log(adminId, "USER_APPROVED", "Admin " + adminId + " approved User " + userId);
+            }
+            return ok;
         } catch (SQLException e) {
             System.err.println("Error approving user: " + e.getMessage());
             return false;
         }
     }
 
-    private boolean updateColumn(String column,int userId, String value){
-        String sql = "UPDATE users SET "+ column + " = ? WHERE user_id = ?";
+    private boolean updateColumn(String column, int userId, String value) {
+        String sql = "UPDATE users SET " + column + " = ? WHERE user_id = ?";
 
-        try(Connection conn = DatabaseConnection.getconnection();
-            PreparedStatement pstmt = conn.prepareStatement(sql)){
+        try (Connection conn = DatabaseConnection.getconnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
 
             pstmt.setString(1, value.toUpperCase());
             pstmt.setInt(2, userId);
 
             int updatedRow = pstmt.executeUpdate();
-            if(updatedRow > 0){
+            if (updatedRow > 0) {
                 System.out.println("\n -> User Id: " + userId + " updated successfully!");
                 return true;
-            }else {
+            } else {
                 System.out.println(" ->User ID not found.");
             }
             return false;
-        }catch (SQLException e){
-            System.err.println("Error updating user:"+e.getMessage());
+        } catch (SQLException e) {
+            System.err.println("Error updating user:" + e.getMessage());
         }
         return false;
     }
 
-    public boolean updateStatus(int userId, String status){
-        return updateColumn("status", userId, status);
+    public boolean updateStatus(int adminId, int userId, String oldStatus, String newStatus) {
+        boolean ok = updateColumn("status", userId, newStatus);
+        if (ok) {
+            logDao.log(adminId, "STATUS_CHANGED",
+                    "Admin " + adminId + " changed User " + userId + " status from " + oldStatus + " to " + newStatus);
+        }
+        return ok;
     }
 
-    public boolean updateRole(int userId, String role){
-        return updateColumn("role", userId, role);
+    public boolean updateRole(int adminId, int userId, String oldRole, String newRole) {
+        boolean ok = updateColumn("role", userId, newRole);
+        if (ok) {
+            logDao.log(adminId, "ROLE_CHANGED",
+                    "Admin " + adminId + " changed User " + userId + " role from " + oldRole + " to " + newRole);
+        }
+        return ok;
+    }
+
+    // ---------------- PROFILE ----------------
+
+    public boolean updateFullName(int userId, String newName) {
+        String sql = "UPDATE users SET full_name = ? WHERE user_id = ?";
+        try (Connection conn = DatabaseConnection.getconnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, newName);
+            ps.setInt(2, userId);
+            boolean ok = ps.executeUpdate() > 0;
+            if (ok) {
+                logDao.log(userId, "PROFILE_UPDATED",
+                        "User " + userId + " changed full name to " + newName);
+            }
+            return ok;
+        } catch (SQLException e) {
+            System.err.println("Error updating profile: " + e.getMessage());
+            return false;
+        }
+    }
+
+    public boolean changePassword(int userId, String oldPass, String newPass) {
+        String checkSql = "SELECT username FROM users WHERE user_id = ? AND password = ?";
+        String updSql = "UPDATE users SET password = ? WHERE user_id = ?";
+
+        try (Connection conn = DatabaseConnection.getconnection()) {
+            String username;
+            try (PreparedStatement ps = conn.prepareStatement(checkSql)) {
+                ps.setInt(1, userId);
+                ps.setString(2, oldPass);
+                try (ResultSet rs = ps.executeQuery()) {
+                    if (!rs.next()) {
+                        System.out.println(" -> Current password is incorrect.");
+                        return false;
+                    }
+                    username = rs.getString(1);
+                }
+            }
+            try (PreparedStatement ps = conn.prepareStatement(updSql)) {
+                ps.setString(1, newPass);
+                ps.setInt(2, userId);
+                ps.executeUpdate();
+            }
+            logDao.log(userId, "PASSWORD_CHANGED",
+                    "User " + username + " (ID: " + userId + ") changed password.");
+            return true;
+        } catch (SQLException e) {
+            System.err.println("Error changing password: " + e.getMessage());
+            return false;
+        }
     }
 
 }

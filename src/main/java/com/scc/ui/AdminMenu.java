@@ -1,6 +1,8 @@
 package com.scc.ui;
 
+import com.scc.dao.ActivityLogDao;
 import com.scc.dao.UserDao;
+import com.scc.model.ActivityLog;
 import com.scc.model.User;
 
 import java.util.List;
@@ -10,10 +12,25 @@ public class AdminMenu {
 
     private final UserDao userDao;
     private final Scanner sc;
+    private final ActivityLogDao logDao = new ActivityLogDao();
+
+    private final CustomerUI customerUI;
+    private final ServiceUI serviceUI;
+    private final OrderUI orderUI;
+    private final PaymentUI paymentUI;
+    private final ReportUI reportUI;
+    private final ProfileUI profileUI;
 
     public AdminMenu(UserDao userDao, Scanner sc) {
         this.userDao = userDao;
         this.sc = sc;
+        InputHelper in = new InputHelper(sc);
+        this.customerUI = new CustomerUI(userDao, in);
+        this.serviceUI = new ServiceUI(in);
+        this.orderUI = new OrderUI(in);
+        this.paymentUI = new PaymentUI(in);
+        this.reportUI = new ReportUI(in);
+        this.profileUI = new ProfileUI(userDao, in);
     }
 
     public void display(User admin) {
@@ -40,13 +57,25 @@ public class AdminMenu {
                     userManagement(admin);
                     break;
                 case "2":
+                    customerUI.menu(admin);
+                    break;
                 case "3":
+                    serviceUI.menu(admin);
+                    break;
                 case "4":
+                    orderUI.adminMenu(admin);
+                    break;
                 case "5":
+                    paymentUI.adminMenu(admin);
+                    break;
                 case "6":
+                    reportUI.menu(admin);
+                    break;
                 case "7":
+                    viewAuditLogs();
+                    break;
                 case "8":
-                    System.out.println("\nComing soon...");
+                    profileUI.menu(admin);
                     break;
                 case "0":
                     System.out.println("\nLogged out successfully.");
@@ -80,7 +109,7 @@ public class AdminMenu {
                     viewPendingUsers();
                     break;
                 case "3":
-                    approveUserAccount();
+                    approveUserAccount(admin);
                     break;
                 case "4":
                     handlingUpdateRole(admin);
@@ -108,7 +137,7 @@ public class AdminMenu {
         printUserTable(pending);
     }
 
-    private void approveUserAccount() {
+    private void approveUserAccount(User admin) {
         List<User> pending = userDao.getPendingUsers();
         System.out.println("\n=== APPROVE USER ACCOUNT ===");
 
@@ -141,7 +170,7 @@ public class AdminMenu {
                 continue;
             }
 
-            if (userDao.approveUser(targetId)) {
+            if (userDao.approveUser(admin.user_id(), targetId)) {
                 System.out.println("-> SUCCESS: User ID " + targetId + " has been APPROVED.");
             } else {
                 System.out.println("-> Failed to approve User ID " + targetId + ".");
@@ -183,7 +212,7 @@ public class AdminMenu {
             return;
         }
 
-        userDao.updateRole(userId, newRole);
+        userDao.updateRole(currentAdmin.user_id(), userId, target.role(), newRole);
     }
 
     private String readValidRole() {
@@ -236,7 +265,7 @@ public class AdminMenu {
             return;
         }
 
-        userDao.updateStatus(userId, newStatus);
+        userDao.updateStatus(currentAdmin.user_id(), userId, target.status(), newStatus);
     }
 
     private String readValidStatus() {
@@ -249,6 +278,67 @@ public class AdminMenu {
                 default:  System.out.println(" -> [ERROR] Invalid, enter 0-2.");
             }
         }
+    }
+
+    // ---------------- AUDIT & ACTIVITY LOGS ----------------
+
+    private void viewAuditLogs() {
+        while (true) {
+            List<String> types = logDao.getActionTypes();
+
+            System.out.println("\n------------- AUDIT & ACTIVITY LOGS -------------");
+            System.out.println("[1] All Logs");
+            for (int i = 0; i < types.size(); i++) {
+                System.out.println("[" + (i + 2) + "] " + types.get(i));
+            }
+            System.out.println("[0] Back");
+            System.out.println("-------------------------------------------------");
+            System.out.print("Enter choice: ");
+            String raw = sc.nextLine().trim();
+
+            int pick;
+            try {
+                pick = Integer.parseInt(raw);
+            } catch (NumberFormatException e) {
+                System.out.println(" -> [ERROR] Invalid, enter 0-" + (types.size() + 1) + ".");
+                continue;
+            }
+
+            if (pick == 0) return;
+            if (pick < 1 || pick > types.size() + 1) {
+                System.out.println(" -> [ERROR] Invalid, enter 0-" + (types.size() + 1) + ".");
+                continue;
+            }
+
+            String filter = (pick == 1) ? null : types.get(pick - 2);
+            List<ActivityLog> logs = logDao.getLogs(filter);
+            printLogTable(logs);
+        }
+    }
+
+    private void printLogTable(List<ActivityLog> logs) {
+        String border = InputHelper.border(5, 7, 19, 20, 70);
+        String fmt = "| %-5s | %-7s | %-19s | %-20s | %-70s |%n";
+
+        System.out.println(border);
+        System.out.printf(fmt, "ID", "USER ID", "TIMESTAMP", "ACTION", "DESCRIPTION");
+        System.out.println(border);
+
+        if (logs.isEmpty()) {
+            InputHelper.emptyRow(border);
+        } else {
+            for (ActivityLog l : logs) {
+                System.out.printf(fmt,
+                        l.id(),
+                        l.user_id(),
+                        l.timestamp(),
+                        l.action_type(),
+                        truncate(l.description(), 70));
+            }
+        }
+
+        System.out.println(border);
+        System.out.println("Total: " + logs.size());
     }
 
     // ---------------- TABLE HELPER ----------------

@@ -7,12 +7,22 @@ import java.util.Scanner;
 
 public class StaffMenu {
 
-    private final UserDao userDao;
     private final Scanner sc;
 
+    private final CustomerUI customerUI;
+    private final OrderUI orderUI;
+    private final PaymentUI paymentUI;
+    private final ReportUI reportUI;
+    private final ProfileUI profileUI;
+
     public StaffMenu(UserDao userDao, Scanner sc) {
-        this.userDao = userDao;
         this.sc = sc;
+        InputHelper in = new InputHelper(sc);
+        this.customerUI = new CustomerUI(userDao, in);
+        this.orderUI = new OrderUI(in);
+        this.paymentUI = new PaymentUI(in);
+        this.reportUI = new ReportUI(in);
+        this.profileUI = new ProfileUI(userDao, in);
     }
 
     public void display(User staff) {
@@ -36,17 +46,64 @@ public class StaffMenu {
 
             switch (choice) {
                 case "1":
+                    customerUI.registerCustomer(staff);
+                    break;
                 case "2":
+                    orderUI.createOrder(staff);
+                    break;
                 case "3":
+                    orderUI.updateOrderStatus(staff);
+                    break;
                 case "4":
+                    paymentUI.recordPayment(staff);
+                    break;
                 case "5":
+                    searchMenu(staff);
+                    break;
                 case "6":
+                    orderUI.cancelOrder(staff);
+                    break;
                 case "7":
+                    reportUI.dailySales(staff);
+                    break;
                 case "8":
-                    System.out.println("\nComing soon...");
+                    profileUI.menu(staff);
                     break;
                 case "0":
                     System.out.println("\nLogged out successfully.");
+                    return;
+                default:
+                    System.out.println("Invalid Choice, Try Again.");
+            }
+        }
+    }
+
+    private void searchMenu(User staff) {
+        while (true) {
+            System.out.println("\n------------- SEARCH / VIEW -------------");
+            System.out.println("[1] Search Customers (name / contact)");
+            System.out.println("[2] View / Filter Orders");
+            System.out.println("[3] Customer Order & Payment History");
+            System.out.println("[4] Edit Customer Details");
+            System.out.println("[0] Back");
+            System.out.println("-----------------------------------------");
+            System.out.print("Enter choice: ");
+            String choice = sc.nextLine().trim();
+
+            switch (choice) {
+                case "1":
+                    customerUI.searchCustomers();
+                    break;
+                case "2":
+                    orderUI.viewOrders();
+                    break;
+                case "3":
+                    customerUI.history();
+                    break;
+                case "4":
+                    customerUI.editCustomer(staff);
+                    break;
+                case "0":
                     return;
                 default:
                     System.out.println("Invalid Choice, Try Again.");

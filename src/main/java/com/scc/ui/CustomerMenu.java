@@ -7,12 +7,20 @@ import java.util.Scanner;
 
 public class CustomerMenu {
 
-    private final UserDao userDao;
     private final Scanner sc;
 
+    private final OrderUI orderUI;
+    private final PaymentUI paymentUI;
+    private final ServiceUI serviceUI;
+    private final ProfileUI profileUI;
+
     public CustomerMenu(UserDao userDao, Scanner sc) {
-        this.userDao = userDao;
         this.sc = sc;
+        InputHelper in = new InputHelper(sc);
+        this.orderUI = new OrderUI(in);
+        this.paymentUI = new PaymentUI(in);
+        this.serviceUI = new ServiceUI(in);
+        this.profileUI = new ProfileUI(userDao, in);
     }
 
     public void display(User customer) {
@@ -33,11 +41,19 @@ public class CustomerMenu {
 
             switch (choice) {
                 case "1":
+                    orderUI.viewMyOrders(customer);
+                    break;
                 case "2":
+                    orderUI.trackOrder(customer);
+                    break;
                 case "3":
+                    paymentUI.paymentHistory(customer);
+                    break;
                 case "4":
+                    serviceUI.viewServices(true);
+                    break;
                 case "5":
-                    System.out.println("\nComing soon...");
+                    profileUI.menu(customer);
                     break;
                 case "0":
                     System.out.println("\nLogged out successfully.");
