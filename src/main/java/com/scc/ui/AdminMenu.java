@@ -17,9 +17,6 @@ public class AdminMenu {
     private final CustomerUI customerUI;
     private final ServiceUI serviceUI;
     private final OrderUI orderUI;
-    private final PaymentUI paymentUI;
-    private final ReportUI reportUI;
-    private final ProfileUI profileUI;
 
     public AdminMenu(UserDao userDao, Scanner sc) {
         this.userDao = userDao;
@@ -28,9 +25,6 @@ public class AdminMenu {
         this.customerUI = new CustomerUI(userDao, in);
         this.serviceUI = new ServiceUI(in);
         this.orderUI = new OrderUI(in);
-        this.paymentUI = new PaymentUI(in);
-        this.reportUI = new ReportUI(in);
-        this.profileUI = new ProfileUI(userDao, in);
     }
 
     public void display(User admin) {
@@ -43,10 +37,7 @@ public class AdminMenu {
             System.out.println("[2] Customer Management");
             System.out.println("[3] Service Management");
             System.out.println("[4] Order Management");
-            System.out.println("[5] Payment Management");
-            System.out.println("[6] Reports");
-            System.out.println("[7] Audit & Activity Logs");
-            System.out.println("[8] My Profile / Change Password");
+            System.out.println("[5] Audit & Activity Logs");
             System.out.println("[0] Logout");
             System.out.println("==========================================");
             System.out.print("Enter choice: ");
@@ -66,16 +57,7 @@ public class AdminMenu {
                     orderUI.adminMenu(admin);
                     break;
                 case "5":
-                    paymentUI.adminMenu(admin);
-                    break;
-                case "6":
-                    reportUI.menu(admin);
-                    break;
-                case "7":
                     viewAuditLogs();
-                    break;
-                case "8":
-                    profileUI.menu(admin);
                     break;
                 case "0":
                     System.out.println("\nLogged out successfully.");
@@ -85,8 +67,6 @@ public class AdminMenu {
             }
         }
     }
-
-    // ---------------- USER MANAGEMENT ----------------
 
     private void userManagement(User admin) {
         while (true) {
@@ -179,8 +159,6 @@ public class AdminMenu {
         }
     }
 
-    // ---------------- UPDATE ROLE ----------------
-
     private void handlingUpdateRole(User currentAdmin) {
         List<User> users = userDao.getAllUsers();
         System.out.println("\n=== UPDATE USER ROLE ===");
@@ -227,8 +205,6 @@ public class AdminMenu {
             }
         }
     }
-
-    // ---------------- UPDATE STATUS ----------------
 
     private void handlingUpdateStatus(User currentAdmin) {
         List<User> users = userDao.getAllUsers();
@@ -279,8 +255,6 @@ public class AdminMenu {
             }
         }
     }
-
-    // ---------------- AUDIT & ACTIVITY LOGS ----------------
 
     private void viewAuditLogs() {
         while (true) {
@@ -341,8 +315,6 @@ public class AdminMenu {
         System.out.println("Total: " + logs.size());
     }
 
-    // ---------------- TABLE HELPER ----------------
-
     private void printUserTable(List<User> users) {
         String border = "+-------+--------------------------------+------------+------------+";
         String format = "| %-5s | %-30s | %-10s | %-10s |%n";
@@ -371,8 +343,6 @@ public class AdminMenu {
         if (text == null) return "";
         return text.length() <= max ? text : text.substring(0, max - 3) + "...";
     }
-
-    // ---------------- INPUT / LOOKUP HELPERS ----------------
 
     private User findById(List<User> users, int id) {
         for (User u : users) {

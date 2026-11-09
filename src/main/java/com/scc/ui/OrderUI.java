@@ -2,12 +2,10 @@ package com.scc.ui;
 
 import com.scc.dao.CustomerDao;
 import com.scc.dao.OrderDao;
-import com.scc.dao.PaymentDao;
 import com.scc.dao.ServiceDao;
 import com.scc.model.Customer;
 import com.scc.model.OrderLine;
 import com.scc.model.OrderSummary;
-import com.scc.model.Payment;
 import com.scc.model.Service;
 import com.scc.model.User;
 
@@ -20,14 +18,12 @@ public class OrderUI {
     private final OrderDao orderDao = new OrderDao();
     private final ServiceDao serviceDao = new ServiceDao();
     private final CustomerDao customerDao = new CustomerDao();
-    private final PaymentDao paymentDao = new PaymentDao();
     private final InputHelper in;
 
     public OrderUI(InputHelper in) {
         this.in = in;
     }
 
-    // ADMIN: Order Management
     public void adminMenu(User admin) {
         while (true) {
             System.out.println("\n------------- ORDER MANAGEMENT -------------");
@@ -49,8 +45,6 @@ public class OrderUI {
             }
         }
     }
-
-    // ---------------- CREATE ----------------
 
     public void createOrder(User actor) {
         System.out.println("\n=== CREATE ORDER ===");
@@ -143,8 +137,6 @@ public class OrderUI {
         }
     }
 
-    // ---------------- UPDATE STATUS ----------------
-
     public void updateOrderStatus(User actor) {
         System.out.println("\n=== UPDATE ORDER STATUS ===");
         int orderId = in.readInt("Order ID (0 to cancel): ");
@@ -184,20 +176,11 @@ public class OrderUI {
             System.out.println(" -> Order is already " + newStatus + ".");
             return;
         }
-        if ("CLAIMED".equals(newStatus) && o.balance() > 0.009) {
-            System.out.println(" -> [WARNING] This order still has an unpaid balance of " + InputHelper.money(o.balance()) + ".");
-            if (!in.confirm("Mark as CLAIMED anyway?")) {
-                System.out.println(" -> Operation Cancelled.");
-                return;
-            }
-        }
 
         if (orderDao.updateOrderStatus(actor.user_id(), orderId, newStatus)) {
             System.out.println(" -> Order #" + orderId + " updated to " + newStatus);
         }
     }
-
-    // ---------------- CANCEL ----------------
 
     public void cancelOrder(User actor) {
         System.out.println("\n=== CANCEL ORDER ===");
@@ -214,8 +197,6 @@ public class OrderUI {
             System.out.println(" -> Order #" + orderId + " has been CANCELLED.");
         }
     }
-
-    // ---------------- VIEW / FILTER ----------------
 
     public void viewOrders() {
         while (true) {
@@ -270,8 +251,6 @@ public class OrderUI {
         }
     }
 
-    // ---------------- CUSTOMER VIEW ----------------
-
     public void viewMyOrders(User customer) {
         System.out.println("\n=== MY ORDERS ===");
         List<OrderSummary> orders = orderDao.getOrders(null, customer.user_id(), null);
@@ -288,9 +267,6 @@ public class OrderUI {
         if (id != 0) showDetails(id, customer.user_id());
     }
 
-    // ---------------- DETAILS ----------------
-
-    // onlyCustomerId != null -> customer can only see own order
     public void showDetails(int orderId, Integer onlyCustomerId) {
         OrderSummary o = orderDao.getOrderById(orderId);
         if (o == null || (onlyCustomerId != null && o.customer_id() != onlyCustomerId)) {
@@ -327,12 +303,6 @@ public class OrderUI {
         System.out.println(border);
 
         System.out.println("Total   : " + InputHelper.money(o.total_amount()));
-        System.out.println("Paid    : " + InputHelper.money(o.paid()));
-        System.out.println("Balance : " + InputHelper.money(o.balance()));
-
-        List<Payment> payments = paymentDao.getPayments(null, orderId, null);
-        System.out.println("\nPayments:");
-        PaymentUI.printPaymentTable(payments);
     }
 
     private String progressLine(String status) {
@@ -345,14 +315,12 @@ public class OrderUI {
         return sb.toString();
     }
 
-    // ---------------- TABLE ----------------
-
     public static void printOrderTable(List<OrderSummary> list) {
-        String border = InputHelper.border(5, 20, 11, 11, 11, 10, 10, 10);
-        String fmt = "| %-5s | %-20s | %-11s | %-11s | %-11s | %-10s | %-10s | %-10s |%n";
+        String border = InputHelper.border(5, 20, 11, 10, 10, 10);
+        String fmt = "| %-5s | %-20s | %-11s | %-10s | %-10s | %-10s |%n";
 
         System.out.println(border);
-        System.out.printf(fmt, "ID", "CUSTOMER", "TOTAL", "PAID", "BALANCE", "STATUS", "ORDERED", "PICKUP");
+        System.out.printf(fmt, "ID", "CUSTOMER", "TOTAL", "STATUS", "ORDERED", "PICKUP");
         System.out.println(border);
 
         if (list.isEmpty()) {
@@ -363,8 +331,6 @@ public class OrderUI {
                         o.order_id(),
                         InputHelper.truncate(o.customer_name(), 20),
                         InputHelper.money(o.total_amount()),
-                        InputHelper.money(o.paid()),
-                        InputHelper.money(o.balance()),
                         o.status(),
                         InputHelper.dateOnly(o.order_date()),
                         InputHelper.dateOnly(o.pickup_date()));

@@ -7,7 +7,7 @@ import java.sql.Statement;
 
 public class DatabaseConnection {
 
-    private static final String DB_PATH = "C:/Users/galle/Videos/Gallera_Laundry/LaundryService.db";
+    private static final String DB_PATH = "LaundryService.db";
     private static final String DB_URL = "jdbc:sqlite:" + DB_PATH;
 
     public static String getDbPath() {

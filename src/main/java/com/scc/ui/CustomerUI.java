@@ -2,11 +2,9 @@ package com.scc.ui;
 
 import com.scc.dao.CustomerDao;
 import com.scc.dao.OrderDao;
-import com.scc.dao.PaymentDao;
 import com.scc.dao.UserDao;
 import com.scc.model.Customer;
 import com.scc.model.OrderSummary;
-import com.scc.model.Payment;
 import com.scc.model.User;
 
 import java.util.List;
@@ -16,7 +14,6 @@ public class CustomerUI {
     private final UserDao userDao;
     private final CustomerDao customerDao = new CustomerDao();
     private final OrderDao orderDao = new OrderDao();
-    private final PaymentDao paymentDao = new PaymentDao();
     private final InputHelper in;
 
     public CustomerUI(UserDao userDao, InputHelper in) {
@@ -24,14 +21,13 @@ public class CustomerUI {
         this.in = in;
     }
 
-    // ADMIN: Customer Management
     public void menu(User admin) {
         while (true) {
             System.out.println("\n------------- CUSTOMER MANAGEMENT -------------");
             System.out.println("[1] View / Search Customers");
             System.out.println("[2] Register New Customer");
             System.out.println("[3] Edit Customer Details");
-            System.out.println("[4] Customer Order & Payment History");
+            System.out.println("[4] Customer Order History");
             System.out.println("[5] Activate / Deactivate Customer");
             System.out.println("[0] Back");
             System.out.println("-----------------------------------------------");
@@ -132,7 +128,7 @@ public class CustomerUI {
     }
 
     public void history() {
-        System.out.println("\n=== CUSTOMER ORDER & PAYMENT HISTORY ===");
+        System.out.println("\n=== CUSTOMER ORDER HISTORY ===");
         List<Customer> list = customerDao.search("");
         printCustomerTable(list);
         if (list.isEmpty()) return;
@@ -146,10 +142,6 @@ public class CustomerUI {
         System.out.println("\n--- ORDERS of " + c.full_name() + " ---");
         List<OrderSummary> orders = orderDao.getOrders(null, c.user_id(), null);
         OrderUI.printOrderTable(orders);
-
-        System.out.println("\n--- PAYMENTS of " + c.full_name() + " ---");
-        List<Payment> payments = paymentDao.getPayments(c.user_id(), null, null);
-        PaymentUI.printPaymentTable(payments);
     }
 
     private void changeStatus(User admin) {
